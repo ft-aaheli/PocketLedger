@@ -120,4 +120,28 @@ void main() {
     );
     expect(tester.getTopLeft(balance), before);
   });
+  testWidgets('Settings creates a bank account with Bank selected by default', (
+    tester,
+  ) async {
+    final ledger = (await tester.runAsync(() async {
+      final opened = await Ledger.open(inMemoryDatabasePath);
+      await opened.setup('INR', 'Cash', 0);
+      return opened;
+    }))!;
+    addTearDown(ledger.db.close);
+    await tester.pumpWidget(PocketLedger(ledger));
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add bank account'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bank'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField).first, 'Savings');
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Save'));
+      await ledger.db.transaction((_) async {});
+    });
+    await tester.pumpAndSettle();
+    expect(ledger.accounts.last.name, 'Savings');
+    expect(ledger.accounts.last.type, 'Bank');
+  });
 }

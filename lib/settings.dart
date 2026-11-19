@@ -51,6 +51,23 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                 ),
               ),
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.add),
+                  title: const Text('Add bank account'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: busy || confirmingLock
+                      ? null
+                      : () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                AccountPage(ledger, initialType: 'Bank'),
+                          ),
+                        ),
+                ),
+              ),
               if (DeviceLock.supported) ...[
                 const SizedBox(height: 16),
                 Card(

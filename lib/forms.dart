@@ -443,10 +443,12 @@ class AccountPage extends StatefulWidget {
     super.key,
     this.account,
     this.returnNewAccount = false,
+    this.initialType = 'Cash',
   });
   final Ledger ledger;
   final Account? account;
   final bool returnNewAccount;
+  final String initialType;
   @override
   State<AccountPage> createState() => _AccountPageState();
 }
@@ -456,7 +458,7 @@ class _AccountPageState extends State<AccountPage> with FormSave<AccountPage> {
   late final opening = TextEditingController(
     text: decimalAmount(widget.account?.opening ?? 0),
   );
-  late String type = widget.account?.type ?? 'Cash';
+  late String type = widget.account?.type ?? widget.initialType;
   late final id = widget.account?.id ?? newId();
 
   @override

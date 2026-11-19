@@ -26,7 +26,7 @@ The Home balance card stays pinned above the scrolling entries and shows Bank an
 
 ## Accounts and profile
 
-Choose Bank or Online when setting up a ledger or creating an account. Use Online to track a digital balance such as a payment wallet. Accounts are tracked manually. Use **Add Bank, Online or other account** on the entry form to create and select an account without leaving your draft.
+Choose Bank or Online when setting up a ledger or creating an account. Use Online to track a digital balance such as a payment wallet. Accounts are tracked manually. **Settings → Add bank account** opens the form with Bank selected. Use **Add Bank, Online or other account** on the entry form to create and select an account without leaving your draft.
 
 Open **Settings → Profile** to enter your full name, phone, email, mailing address, or add a photo. The profile is stored on this device and is excluded from ledger backups. The app opens without a login.
 
