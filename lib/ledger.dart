@@ -150,6 +150,11 @@ class Ledger extends ChangeNotifier {
 
   String get currency => preferences['currency'] ?? 'INR';
   String get theme => preferences['theme'] ?? 'system';
+  static const _appLockPreference = 'appLock';
+  bool get appLockEnabled => preferences[_appLockPreference] == 'enabled';
+
+  Future<void> setAppLock(bool enabled) =>
+      setting(_appLockPreference, enabled ? 'enabled' : 'disabled');
 
   LocalProfile profile = const LocalProfile();
 
@@ -421,6 +426,10 @@ class Ledger extends ChangeNotifier {
 
   Future<Uint8List> export(String password) async {
     final data = await db.transaction(_snapshot);
+    data['preferences'] = _rows(
+      data,
+      'preferences',
+    ).where((row) => row['key'] != _appLockPreference).toList();
     final salt = SecretKeyData.random(length: 16).bytes;
     final key = await _key(password, salt);
     final box = await AesGcm.with256bits().encrypt(
@@ -489,14 +498,14 @@ class Ledger extends ChangeNotifier {
       throw const FormatException('Invalid backup records.');
     }
     await _change((tx) async {
-      for (final table in [
-        'entries',
-        'categories',
-        'accounts',
-        'preferences',
-      ]) {
+      for (final table in ['entries', 'categories', 'accounts']) {
         await tx.delete(table);
       }
+      await tx.delete(
+        'preferences',
+        where: 'key != ?',
+        whereArgs: [_appLockPreference],
+      );
       for (final (table, rows) in [
         ('accounts', accounts),
         ('categories', categories),

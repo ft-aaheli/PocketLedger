@@ -30,6 +30,12 @@ Choose Bank or Online when setting up a ledger or creating an account. Use Onlin
 
 Open **Settings → Profile** to enter your full name, phone, email, mailing address, or add a photo. The profile is stored on this device and is excluded from ledger backups. The app opens without a login.
 
+## App lock
+
+On Android, enable **Settings → App lock** and confirm your device PIN, pattern, or password. PocketLedger asks for device confirmation when you reopen it after leaving the app. Android handles credential entry. You need to confirm again before turning the lock off. The setting stays on the device when you export or restore a ledger backup.
+
+The app lock is optional, so a fresh install can be opened and reviewed offline without account credentials.
+
 ## Export and share a monthly report
 
 Open Reports and select a month. **Excel** and **PDF** save a copy through the system file picker. **Share report** lets you choose a format and opens the system share sheet for WhatsApp and other installed apps.

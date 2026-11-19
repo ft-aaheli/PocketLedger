@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'app_lock.dart';
 import 'forms.dart';
 import 'ledger.dart';
 import 'profile.dart';
@@ -15,6 +16,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   Ledger get ledger => widget.ledger;
   bool busy = false;
+  bool confirmingLock = false;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -49,6 +51,20 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                 ),
               ),
+              if (DeviceLock.supported) ...[
+                const SizedBox(height: 16),
+                Card(
+                  child: SwitchListTile(
+                    secondary: const Icon(Icons.lock_outline),
+                    title: const Text('App lock'),
+                    subtitle: const Text(
+                      'Require your Android screen lock to open PocketLedger.',
+                    ),
+                    value: ledger.appLockEnabled,
+                    onChanged: busy || confirmingLock ? null : changeAppLock,
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               dropdown(
                 'Appearance',
@@ -116,6 +132,17 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     },
   );
+
+  Future<void> changeAppLock(bool enabled) async {
+    setState(() => confirmingLock = true);
+    try {
+      if (await DeviceLock.confirm()) await ledger.setAppLock(enabled);
+    } catch (error) {
+      notice(DeviceLock.errorText(error));
+    } finally {
+      if (mounted) setState(() => confirmingLock = false);
+    }
+  }
 
   Future<void> act(Future<void> Function() operation) async {
     if (busy) return;

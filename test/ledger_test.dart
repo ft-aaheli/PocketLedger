@@ -134,6 +134,7 @@ void main() {
         throwsStateError,
       );
       final backup = await ledger.export('correct password');
+      await ledger.setAppLock(true);
       final expected = ledger.entries.map((e) => e.row).toList();
       await ledger.deleteEntry('expense');
       await expectLater(
@@ -142,6 +143,7 @@ void main() {
       );
       expect(ledger.entries.single.id, 'income');
       await ledger.restore(backup, 'correct password');
+      expect(ledger.appLockEnabled, isTrue);
       expect(ledger.entries.map((e) => e.row), expected);
       expect(ledger.balances, {cash: 115000, 'bank': 200000});
       expect(

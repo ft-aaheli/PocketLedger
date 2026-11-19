@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
 
+import 'app_lock.dart';
 import 'ledger.dart';
 import 'report_actions.dart';
 import 'forms.dart';
@@ -86,6 +87,10 @@ class PocketLedger extends StatelessWidget {
       theme: appTheme(Brightness.light),
       darkTheme: appTheme(Brightness.dark),
       themeMode: ThemeMode.values.byName(ledger.theme),
+      builder: (context, child) => AppLockGate(
+        enabled: DeviceLock.supported && ledger.appLockEnabled,
+        child: child!,
+      ),
       home: ledger.accounts.isEmpty ? SetupPage(ledger) : LedgerHome(ledger),
     ),
   );
