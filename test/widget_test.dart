@@ -28,6 +28,7 @@ void main() {
     await tester.tap(find.text('Add entry'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '250.25');
+    await tester.ensureVisible(find.text('Category'));
     await tester.tap(find.text('Category'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Food').last);
@@ -43,4 +44,36 @@ void main() {
     expect(ledger.balances.values.single, -25025);
     expect(find.text('Food'), findsOneWidget);
   });
+  testWidgets(
+    'creates and selects a bank account without losing the entry draft',
+    (tester) async {
+      final ledger = (await tester.runAsync(() async {
+        final opened = await Ledger.open(inMemoryDatabasePath);
+        await opened.setup('INR', 'Cash', 0);
+        return opened;
+      }))!;
+      addTearDown(ledger.db.close);
+      await tester.pumpWidget(PocketLedger(ledger));
+      await tester.tap(find.text('Add entry'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).first, '22.50');
+      final add = find.text('Add Bank, Online or other account');
+      await tester.ensureVisible(add);
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).first, 'My Bank');
+      await tester.tap(find.text('Account type'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bank').last);
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Save'));
+        await ledger.db.transaction((_) async {});
+      });
+      await tester.pumpAndSettle();
+      expect(ledger.accounts.last.type, 'Bank');
+      expect(find.text('My Bank'), findsOneWidget);
+      expect(find.text('22.50'), findsOneWidget);
+    },
+  );
 }

@@ -34,9 +34,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   leading: const Icon(Icons.person_outline),
                   title: const Text('Profile'),
                   subtitle: Text(
-                    ledger.profileName.isEmpty
-                        ? 'Add a display name'
-                        : ledger.profileName,
+                    ledger.profile.name.isEmpty
+                        ? 'Add your full name'
+                        : ledger.profile.name,
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: busy

@@ -91,6 +91,7 @@ mixin FormSave<T extends StatefulWidget> on State<T> {
     Future<void> Function() write, {
     bool close = true,
     bool validate = true,
+    String? result,
   }) async {
     if (saving || (validate && !formKey.currentState!.validate())) return;
     FocusScope.of(context).unfocus();
@@ -98,7 +99,7 @@ mixin FormSave<T extends StatefulWidget> on State<T> {
     try {
       await write();
       if (mounted && close && ModalRoute.isCurrentOf(context) == true) {
-        Navigator.pop(context);
+        Navigator.pop(context, result);
       }
     } catch (error) {
       if (mounted) {
@@ -205,7 +206,7 @@ class _SetupPageState extends State<SetupPage> with FormSave<SetupPage> {
         style: Theme.of(context).textTheme.headlineSmall,
       ),
       const Text(
-        'Choose a currency and add the account you’ll use first. Your records stay on this device.',
+        'Choose a currency and your first account. Setup is offline and requires no sign-in.',
       ),
       dropdown('Currency', currency, {
         for (final code in currencies) code: code,
@@ -276,6 +277,26 @@ class _EntryPageState extends State<EntryPage> with FormSave<EntryPage> {
     super.dispose();
   }
 
+  int accountPickerRevision = 0;
+
+  Future<void> createEntryAccount() async {
+    final id = await Navigator.push<String>(
+      context,
+      MaterialPageRoute<String>(
+        builder: (_) => AccountPage(ledger, returnNewAccount: true),
+      ),
+    );
+    if (!mounted || id == null) return;
+    setState(() {
+      if (kind == Kind.transfer && source != null) {
+        destination = id;
+      } else {
+        source = id;
+      }
+      accountPickerRevision++;
+    });
+  }
+
   Map<String, String> accountChoices(String? original) => {
     for (final a in ledger.accounts)
       if (!a.archived || a.id == original)
@@ -332,6 +353,15 @@ class _EntryPageState extends State<EntryPage> with FormSave<EntryPage> {
             source = value;
             if (destination == value) destination = null;
           }),
+          key: ValueKey(('source', accountPickerRevision)),
+        ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: saving ? null : createEntryAccount,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Bank, Online or other account'),
+          ),
         ),
         if (kind == Kind.transfer) ...[
           if (destinations.isEmpty)
@@ -341,7 +371,7 @@ class _EntryPageState extends State<EntryPage> with FormSave<EntryPage> {
             destination,
             destinations,
             (value) => setState(() => destination = value),
-            key: ValueKey(source),
+            key: ValueKey(('destination', source, accountPickerRevision)),
           ),
         ] else ...[
           if (categories.isEmpty)
@@ -408,9 +438,15 @@ class _EntryPageState extends State<EntryPage> with FormSave<EntryPage> {
 }
 
 class AccountPage extends StatefulWidget {
-  const AccountPage(this.ledger, {super.key, this.account});
+  const AccountPage(
+    this.ledger, {
+    super.key,
+    this.account,
+    this.returnNewAccount = false,
+  });
   final Ledger ledger;
   final Account? account;
+  final bool returnNewAccount;
   @override
   State<AccountPage> createState() => _AccountPageState();
 }
@@ -421,6 +457,7 @@ class _AccountPageState extends State<AccountPage> with FormSave<AccountPage> {
     text: decimalAmount(widget.account?.opening ?? 0),
   );
   late String type = widget.account?.type ?? 'Cash';
+  late final id = widget.account?.id ?? newId();
 
   @override
   void dispose() {
@@ -477,13 +514,14 @@ class _AccountPageState extends State<AccountPage> with FormSave<AccountPage> {
       onSave: () => save(
         () => widget.ledger.saveAccount(
           Account(
-            old?.id ?? newId(),
+            id,
             name.text.trim(),
             type,
             minorUnits(opening.text)!,
             old?.archived ?? false,
           ),
         ),
+        result: widget.returnNewAccount ? id : null,
       ),
     );
   }

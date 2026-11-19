@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketledger/ledger.dart';
@@ -57,20 +58,64 @@ void main() {
         await ledger.saveAccount(
           const Account('online', 'Online wallet', 'Online', 200, false),
         );
-        await ledger.saveProfileName('  Jit  ');
+        await ledger.saveProfile(
+          const LocalProfile(name: '  Jit  ', email: 'jit@example.com'),
+        );
       } finally {
         await ledger.db.close();
       }
 
       final reopened = await Ledger.open(path);
       addTearDown(reopened.db.close);
-      expect(reopened.profileName, 'Jit');
+      expect(reopened.profile.name, 'Jit');
+      expect(reopened.profile.email, 'jit@example.com');
       expect(reopened.accounts.map((account) => account.type), [
         'Cash',
         'Bank',
         'Online',
       ]);
       expect(reopened.balances, {'cash': 750, 'bank': 350, 'online': 200});
+    },
+  );
+  test(
+    'preserves the v2 profile and persists expanded contact fields',
+    () async {
+      final folder = await Directory.systemTemp.createTemp(
+        'pocketledger-profile-',
+      );
+      addTearDown(() => folder.delete(recursive: true));
+      final path = '${folder.path}/ledger.sqlite';
+      final fixture = await Ledger.open(path);
+      await fixture.db.execute('DROP TABLE local_profile');
+      await fixture.db.execute(
+        'CREATE TABLE local_profile (id INTEGER PRIMARY KEY CHECK(id = 1), name TEXT NOT NULL)',
+      );
+      await fixture.db.insert('local_profile', {'id': 1, 'name': 'Jit'});
+      await fixture.db.setVersion(2);
+      await fixture.db.close();
+
+      final upgraded = await Ledger.open(path);
+      try {
+        expect(upgraded.profile.name, 'Jit');
+        expect(upgraded.profile.phone, isEmpty);
+        await upgraded.saveProfile(
+          LocalProfile(
+            name: 'Jit',
+            phone: '+91 12345',
+            email: 'jit@example.com',
+            address: 'Mailing address',
+            photo: Uint8List.fromList([1, 2, 3]),
+          ),
+        );
+      } finally {
+        await upgraded.db.close();
+      }
+      final reopened = await Ledger.open(path);
+      addTearDown(reopened.db.close);
+      expect(reopened.profile.phone, '+91 12345');
+      expect(reopened.profile.email, 'jit@example.com');
+      expect(reopened.profile.address, 'Mailing address');
+      expect(reopened.profile.photo, [1, 2, 3]);
     },
   );
 }

@@ -117,6 +117,27 @@ class LedgerEntry {
   };
 }
 
+class LocalProfile {
+  const LocalProfile({
+    this.name = '',
+    this.phone = '',
+    this.email = '',
+    this.address = '',
+    this.photo,
+  });
+
+  final String name, phone, email, address;
+  final Uint8List? photo;
+
+  factory LocalProfile.from(Map<String, Object?> row) => LocalProfile(
+    name: row['name'] as String,
+    phone: row['phone'] as String,
+    email: row['email'] as String,
+    address: row['address'] as String,
+    photo: row['photo'] as Uint8List?,
+  );
+}
+
 class Ledger extends ChangeNotifier {
   Ledger(this.db);
 
@@ -130,7 +151,7 @@ class Ledger extends ChangeNotifier {
   String get currency => preferences['currency'] ?? 'INR';
   String get theme => preferences['theme'] ?? 'system';
 
-  String profileName = '';
+  LocalProfile profile = const LocalProfile();
 
   static Future<void> _createAccounts(Database db, String table) => db.execute(
     '''CREATE TABLE $table (
@@ -139,25 +160,42 @@ class Ledger extends ChangeNotifier {
       opening INTEGER NOT NULL, archived INTEGER NOT NULL CHECK(archived IN (0,1)))''',
   );
 
-  static Future<void> _createProfile(Database db) =>
-      db.execute('''CREATE TABLE local_profile (
-      id INTEGER PRIMARY KEY CHECK(id = 1), name TEXT NOT NULL)''');
+  static Future<void> _createProfile(Database db) => db.execute(
+    '''CREATE TABLE local_profile (
+      id INTEGER PRIMARY KEY CHECK(id = 1), name TEXT NOT NULL,
+      phone TEXT NOT NULL, email TEXT NOT NULL, address TEXT NOT NULL, photo BLOB)''',
+  );
 
-  Future<void> saveProfileName(String value) => _change((tx) async {
-    final name = value.trim();
-    if (name.length > 60) {
-      throw StateError('Use a name of 60 characters or fewer.');
+  Future<void> saveProfile(LocalProfile value) async {
+    if (value.name.length > 100 ||
+        value.phone.length > 40 ||
+        value.email.length > 254 ||
+        value.address.length > 500 ||
+        (value.photo?.length ?? 0) > 512 * 1024) {
+      throw StateError('One or more profile fields exceed their size limit.');
     }
-    await tx.insert('local_profile', {
+    await db.insert('local_profile', {
       'id': 1,
-      'name': name,
+      'name': value.name.trim(),
+      'phone': value.phone.trim(),
+      'email': value.email.trim(),
+      'address': value.address.trim(),
+      'photo': value.photo,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
-  });
+    profile = LocalProfile(
+      name: value.name.trim(),
+      phone: value.phone.trim(),
+      email: value.email.trim(),
+      address: value.address.trim(),
+      photo: value.photo,
+    );
+    notifyListeners();
+  }
 
   static Future<Ledger> open([String? path]) async {
     final database = await openDatabase(
       path ?? '${await getDatabasesPath()}/pocketledger.db',
-      version: 2,
+      version: 3,
       onConfigure: (db) async {
         // Rebuilding the parent table in the upgrade requires foreign keys
         // off before sqflite starts the migration transaction.
@@ -166,15 +204,24 @@ class Ledger extends ChangeNotifier {
         }
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        await _createAccounts(db, 'accounts_new');
-        await db.execute(
-          'INSERT INTO accounts_new SELECT * FROM accounts ORDER BY rowid',
-        );
-        await db.execute('DROP TABLE accounts');
-        await db.execute('ALTER TABLE accounts_new RENAME TO accounts');
-        await _createProfile(db);
-        if ((await db.rawQuery('PRAGMA foreign_key_check')).isNotEmpty) {
-          throw StateError('The ledger contains invalid account references.');
+        if (oldVersion == 1) {
+          await _createAccounts(db, 'accounts_new');
+          await db.execute(
+            'INSERT INTO accounts_new SELECT * FROM accounts ORDER BY rowid',
+          );
+          await db.execute('DROP TABLE accounts');
+          await db.execute('ALTER TABLE accounts_new RENAME TO accounts');
+          await _createProfile(db);
+          if ((await db.rawQuery('PRAGMA foreign_key_check')).isNotEmpty) {
+            throw StateError('The ledger contains invalid account references.');
+          }
+        } else {
+          for (final column in ['phone', 'email', 'address']) {
+            await db.execute(
+              "ALTER TABLE local_profile ADD COLUMN $column TEXT NOT NULL DEFAULT ''",
+            );
+          }
+          await db.execute('ALTER TABLE local_profile ADD COLUMN photo BLOB');
         }
       },
       onOpen: (db) => db.execute('PRAGMA foreign_keys = ON'),
@@ -204,7 +251,12 @@ class Ledger extends ChangeNotifier {
         }
       },
     );
-    return Ledger(database).._load(await database.transaction(_snapshot));
+    final profileRow = (await database.query('local_profile')).firstOrNull;
+    return Ledger(database)
+      ..profile = profileRow == null
+          ? const LocalProfile()
+          : LocalProfile.from(profileRow)
+      .._load(await database.transaction(_snapshot));
   }
 
   static Future<Map<String, Object?>> _snapshot(DatabaseExecutor db) async => {
@@ -212,11 +264,9 @@ class Ledger extends ChangeNotifier {
     'categories': await db.query('categories', orderBy: 'rowid'),
     'entries': await db.query('entries', orderBy: 'day DESC, rowid DESC'),
     'preferences': await db.query('preferences'),
-    'profileName': (await db.query('local_profile')).firstOrNull?['name'] ?? '',
   };
 
   void _load(Map<String, Object?> data) {
-    profileName = data['profileName'] as String;
     accounts = List.unmodifiable(_rows(data, 'accounts').map(Account.from));
     categories = List.unmodifiable(
       _rows(data, 'categories').map(Category.from),
@@ -370,7 +420,7 @@ class Ledger extends ChangeNotifier {
       .fold(0, (sum, entry) => sum + entry.amount);
 
   Future<Uint8List> export(String password) async {
-    final data = (await db.transaction(_snapshot))..remove('profileName');
+    final data = await db.transaction(_snapshot);
     final salt = SecretKeyData.random(length: 16).bytes;
     final key = await _key(password, salt);
     final box = await AesGcm.with256bits().encrypt(

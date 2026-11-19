@@ -24,9 +24,9 @@ Edit the expense to ₹350 and delete the transfer. Cash should show ₹1,150 an
 
 ## Accounts and profile
 
-Choose Bank or Online when setting up a ledger or creating an account. Use Online to track a digital balance such as a payment wallet. Accounts are tracked manually.
+Choose Bank or Online when setting up a ledger or creating an account. Use Online to track a digital balance such as a payment wallet. Accounts are tracked manually. Use **Add Bank, Online or other account** on the entry form to create and select an account without leaving your draft.
 
-Open **Settings → Profile** to set a display name. The profile is stored on this device and is excluded from ledger backups. The app opens without a login.
+Open **Settings → Profile** to enter your full name, phone, email, mailing address, or add a photo. The profile is stored on this device and is excluded from ledger backups. The app opens without a login.
 
 ## Export and share a monthly report
 
