@@ -202,8 +202,9 @@ class Ledger extends ChangeNotifier {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       final path = await const MethodChannel('pocketledger/storage')
           .invokeMethod<String>('databasePath');
-      if (path == null)
+      if (path == null) {
         throw StateError('The private ledger directory is unavailable.');
+      }
       return path;
     }
     return '${await getDatabasesPath()}/pocketledger.db';
