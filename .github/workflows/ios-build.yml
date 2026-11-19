@@ -17,7 +17,11 @@ permissions:
 jobs:
   build:
     runs-on: macos-26
-    timeout-minutes: 35
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [device, simulator]
     steps:
       - uses: actions/checkout@v4
 
@@ -32,9 +36,14 @@ jobs:
           flutter --version
           flutter pub get --enforce-lockfile
 
-      - name: Build and launch on an iPhone simulator
+      - name: Build the iPhone simulator app
+        if: matrix.target == 'simulator'
+        run: flutter build ios --simulator --debug --no-pub
+
+      - name: Launch on iPhone simulator
+        if: matrix.target == 'simulator'
+        timeout-minutes: 8
         run: |
-          flutter build ios --simulator --debug --no-pub
           simulator="$(xcrun simctl list devices available --json | python3 -c '
           import json, sys
           runtimes = json.load(sys.stdin)["devices"]
@@ -53,6 +62,7 @@ jobs:
             "$RUNNER_TEMP/ios-artifacts/PocketLedger-iOS-Simulator.zip"
 
       - name: Build the unsigned iPhone application
+        if: matrix.target == 'device'
         run: |
           flutter build ios --release --no-codesign --no-pub
           mkdir -p "$RUNNER_TEMP/Payload"
@@ -62,6 +72,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: PocketLedger-iOS
+          name: PocketLedger-iOS-${{ matrix.target }}
           path: ${{ runner.temp }}/ios-artifacts/*
           if-no-files-found: error
