@@ -11,7 +11,7 @@ enum Kind { expense, income, transfer }
 
 const backupSizeLimit = 20 * 1024 * 1024;
 const currencies = ['INR', 'USD', 'EUR', 'GBP'];
-const accountTypes = ['Cash', 'Bank', 'Card', 'Wallet', 'Other'];
+const accountTypes = ['Cash', 'Bank', 'Online', 'Card', 'Wallet', 'Other'];
 
 int? minorUnits(String input) {
   final text = input.trim();
@@ -130,18 +130,57 @@ class Ledger extends ChangeNotifier {
   String get currency => preferences['currency'] ?? 'INR';
   String get theme => preferences['theme'] ?? 'system';
 
+  String profileName = '';
+
+  static Future<void> _createAccounts(Database db, String table) => db.execute(
+    '''CREATE TABLE $table (
+      id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL CHECK(length(trim(name)) > 0),
+      type TEXT NOT NULL CHECK(type IN ('Cash','Bank','Online','Card','Wallet','Other')),
+      opening INTEGER NOT NULL, archived INTEGER NOT NULL CHECK(archived IN (0,1)))''',
+  );
+
+  static Future<void> _createProfile(Database db) =>
+      db.execute('''CREATE TABLE local_profile (
+      id INTEGER PRIMARY KEY CHECK(id = 1), name TEXT NOT NULL)''');
+
+  Future<void> saveProfileName(String value) => _change((tx) async {
+    final name = value.trim();
+    if (name.length > 60) {
+      throw StateError('Use a name of 60 characters or fewer.');
+    }
+    await tx.insert('local_profile', {
+      'id': 1,
+      'name': name,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  });
+
   static Future<Ledger> open([String? path]) async {
     final database = await openDatabase(
       path ?? '${await getDatabasesPath()}/pocketledger.db',
-      version: 1,
-      onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
-      onCreate: (db, version) async {
+      version: 2,
+      onConfigure: (db) async {
+        // Rebuilding the parent table in the upgrade requires foreign keys
+        // off before sqflite starts the migration transaction.
+        if (await db.getVersion() != 1) {
+          await db.execute('PRAGMA foreign_keys = ON');
+        }
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        await _createAccounts(db, 'accounts_new');
         await db.execute(
-          '''CREATE TABLE accounts (
-          id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL CHECK(length(trim(name)) > 0),
-          type TEXT NOT NULL CHECK(type IN ('Cash','Bank','Card','Wallet','Other')),
-          opening INTEGER NOT NULL, archived INTEGER NOT NULL CHECK(archived IN (0,1)))''',
+          'INSERT INTO accounts_new SELECT * FROM accounts ORDER BY rowid',
         );
+        await db.execute('DROP TABLE accounts');
+        await db.execute('ALTER TABLE accounts_new RENAME TO accounts');
+        await _createProfile(db);
+        if ((await db.rawQuery('PRAGMA foreign_key_check')).isNotEmpty) {
+          throw StateError('The ledger contains invalid account references.');
+        }
+      },
+      onOpen: (db) => db.execute('PRAGMA foreign_keys = ON'),
+      onCreate: (db, version) async {
+        await _createAccounts(db, 'accounts');
+        await _createProfile(db);
         await db.execute(
           '''CREATE TABLE categories (
           id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL CHECK(length(trim(name)) > 0),
@@ -173,9 +212,11 @@ class Ledger extends ChangeNotifier {
     'categories': await db.query('categories', orderBy: 'rowid'),
     'entries': await db.query('entries', orderBy: 'day DESC, rowid DESC'),
     'preferences': await db.query('preferences'),
+    'profileName': (await db.query('local_profile')).firstOrNull?['name'] ?? '',
   };
 
   void _load(Map<String, Object?> data) {
+    profileName = data['profileName'] as String;
     accounts = List.unmodifiable(_rows(data, 'accounts').map(Account.from));
     categories = List.unmodifiable(
       _rows(data, 'categories').map(Category.from),
@@ -209,36 +250,40 @@ class Ledger extends ChangeNotifier {
     }
   }
 
-  Future<void> setup(String currency, String name, int opening) =>
-      _change((tx) async {
-        if (accounts.isNotEmpty || !currencies.contains(currency)) {
-          throw StateError('Invalid setup.');
-        }
-        await tx.insert('preferences', {'key': 'currency', 'value': currency});
+  Future<void> setup(
+    String currency,
+    String name,
+    int opening, {
+    String type = 'Cash',
+  }) => _change((tx) async {
+    if (accounts.isNotEmpty || !currencies.contains(currency)) {
+      throw StateError('Invalid setup.');
+    }
+    await tx.insert('preferences', {'key': 'currency', 'value': currency});
+    await tx.insert(
+      'accounts',
+      Account(newId(), name, type, opening, false).row,
+    );
+    const seeds = {
+      Kind.expense: [
+        'Food',
+        'Transport',
+        'Shopping',
+        'Bills',
+        'Health',
+        'Other',
+      ],
+      Kind.income: ['Salary', 'Freelance', 'Gifts', 'Other'],
+    };
+    for (final group in seeds.entries) {
+      for (final name in group.value) {
         await tx.insert(
-          'accounts',
-          Account(newId(), name, 'Cash', opening, false).row,
+          'categories',
+          Category(newId(), name, group.key, false).row,
         );
-        const seeds = {
-          Kind.expense: [
-            'Food',
-            'Transport',
-            'Shopping',
-            'Bills',
-            'Health',
-            'Other',
-          ],
-          Kind.income: ['Salary', 'Freelance', 'Gifts', 'Other'],
-        };
-        for (final group in seeds.entries) {
-          for (final name in group.value) {
-            await tx.insert(
-              'categories',
-              Category(newId(), name, group.key, false).row,
-            );
-          }
-        }
-      });
+      }
+    }
+  });
 
   Future<void> setting(String key, String value) => _change((tx) async {
     if (key == 'currency' &&
@@ -325,7 +370,7 @@ class Ledger extends ChangeNotifier {
       .fold(0, (sum, entry) => sum + entry.amount);
 
   Future<Uint8List> export(String password) async {
-    final data = await db.transaction(_snapshot);
+    final data = (await db.transaction(_snapshot))..remove('profileName');
     final salt = SecretKeyData.random(length: 16).bytes;
     final key = await _key(password, salt);
     final box = await AesGcm.with256bits().encrypt(

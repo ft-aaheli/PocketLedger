@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'forms.dart';
 import 'ledger.dart';
+import 'profile.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage(this.ledger, {super.key});
@@ -28,6 +29,27 @@ class _SettingsPageState extends State<SettingsPage> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.person_outline),
+                  title: const Text('Profile'),
+                  subtitle: Text(
+                    ledger.profileName.isEmpty
+                        ? 'Add a display name'
+                        : ledger.profileName,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: busy
+                      ? null
+                      : () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                            builder: (_) => ProfilePage(ledger),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
               dropdown(
                 'Appearance',
                 ledger.theme,

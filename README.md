@@ -22,6 +22,12 @@ On the phone, create Cash with an opening balance of ₹1,000. Record a ₹250 e
 
 Edit the expense to ₹350 and delete the transfer. Cash should show ₹1,150 and Bank ₹2,000. Export a backup under Settings, delete an entry, then restore the backup and confirm it returns. Switch to airplane mode and reopen the app to confirm the ledger is still available.
 
+## Accounts and profile
+
+Choose Bank or Online when setting up a ledger or creating an account. Use Online to track a digital balance such as a payment wallet. Accounts are tracked manually.
+
+Open **Settings → Profile** to set a display name. The profile is stored on this device and is excluded from ledger backups. The app opens without a login.
+
 ## Export and share a monthly report
 
 Open Reports and select a month. **Excel** and **PDF** save a copy through the system file picker. **Share report** lets you choose a format and opens the system share sheet for WhatsApp and other installed apps.

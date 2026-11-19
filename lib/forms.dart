@@ -177,6 +177,7 @@ class _SetupPageState extends State<SetupPage> with FormSave<SetupPage> {
   final name = TextEditingController(text: 'Cash');
   final opening = TextEditingController(text: '0.00');
   String currency = 'INR';
+  String type = 'Cash';
 
   @override
   void dispose() {
@@ -209,6 +210,18 @@ class _SetupPageState extends State<SetupPage> with FormSave<SetupPage> {
       dropdown('Currency', currency, {
         for (final code in currencies) code: code,
       }, (value) => setState(() => currency = value!)),
+      dropdown(
+        'Account type',
+        type,
+        {for (final choice in accountTypes) choice: choice},
+        (value) {
+          if (value == null) return;
+          setState(() {
+            if (name.text == type) name.text = value;
+            type = value;
+          });
+        },
+      ),
       nameField(name, 'First account'),
       amountField(opening, 'Opening balance', signed: true),
     ],
@@ -217,6 +230,7 @@ class _SetupPageState extends State<SetupPage> with FormSave<SetupPage> {
         currency,
         name.text.trim(),
         minorUnits(opening.text)!,
+        type: type,
       ),
       close: false,
     ),
