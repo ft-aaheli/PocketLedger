@@ -12,7 +12,17 @@ Use Flutter 3.50.0, a JDK compatible with Gradle 9, and the Android SDK. Run `fl
 
 To build the phone test package for 32-bit and 64-bit ARM devices, run `flutter build apk --release --target-platform android-arm,android-arm64`. The APK is at `build/app/outputs/flutter-apk/app-release.apk`. This build uses the generated debug signing key for testing.
 
-The debug package uses the ID com.pocketledger.pocketledger.dev so it can run alongside the standard package. The iOS project is included for future device validation.
+The debug package uses the ID com.pocketledger.pocketledger.dev so it can run alongside the standard package. The same Flutter project also builds for iPhone.
+
+## Run on iPhone
+
+Use Flutter 3.50.0 on macOS with Xcode. PocketLedger targets iOS 15 or later.
+
+1. Run `flutter pub get` and `flutter run` with an iPhone simulator selected.
+2. To run on a phone, open `ios/Runner.xcworkspace` in Xcode. Select your Apple team under Runner → Signing & Capabilities, connect the phone, and run the app.
+3. For TestFlight, register the bundle ID with your Apple Developer team and run `flutter build ipa` with distribution signing configured.
+
+GitHub Actions builds and launches the simulator app and compiles an unsigned iPhone archive. A signed build and provisioning are required for physical iPhone installation. App lock uses Face ID, Touch ID, or the device passcode on iOS. The ledger and profile stay in the private app directory, and that directory is excluded from iOS backups. Use the app's encrypted ledger export for a transferable backup.
 
 ## Verify the first build
 
@@ -32,7 +42,7 @@ Open **Settings → Profile** to enter your full name, phone, email, mailing add
 
 ## App lock
 
-On Android, enable **Settings → App lock** and confirm your device PIN, pattern, or password. PocketLedger asks for device confirmation when you reopen it after leaving the app. Android handles credential entry. You need to confirm again before turning the lock off. The setting stays on the device when you export or restore a ledger backup.
+Enable **Settings → App lock** and confirm using your device credentials. Android uses the PIN, pattern, or password. iOS uses Face ID, Touch ID, or the device passcode. PocketLedger asks for device confirmation when you reopen it after leaving the app. Android handles credential entry. You need to confirm again before turning the lock off. The setting stays on the device when you export or restore a ledger backup.
 
 The app lock is optional, so a fresh install can be opened and reviewed offline without account credentials.
 

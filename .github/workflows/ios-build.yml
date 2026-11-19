@@ -1,0 +1,67 @@
+name: Build PocketLedger for iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'lib/**'
+      - 'assets/**'
+      - 'pubspec.*'
+      - '.github/workflows/ios-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Flutter 3.50.0
+        run: |
+          git clone --depth 1 --branch 3.50.0 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Resolve packages
+        run: |
+          xcodebuild -version
+          flutter --version
+          flutter pub get --enforce-lockfile
+
+      - name: Build and launch on an iPhone simulator
+        run: |
+          flutter build ios --simulator --debug --no-pub
+          simulator="$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          runtimes = json.load(sys.stdin)["devices"]
+          phones = [d["udid"] for runtime in sorted(runtimes, reverse=True)
+                    for d in runtimes[runtime] if d["name"].startswith("iPhone")]
+          if not phones:
+              sys.exit("No available iPhone simulator")
+          print(phones[0])
+          ')"
+          xcrun simctl boot "$simulator"
+          xcrun simctl bootstatus "$simulator" -b
+          xcrun simctl install "$simulator" build/ios/iphonesimulator/Runner.app
+          xcrun simctl launch "$simulator" com.pocketledger.pocketledger
+          mkdir -p "$RUNNER_TEMP/ios-artifacts"
+          ditto -c -k --keepParent build/ios/iphonesimulator/Runner.app \
+            "$RUNNER_TEMP/ios-artifacts/PocketLedger-iOS-Simulator.zip"
+
+      - name: Build the unsigned iPhone application
+        run: |
+          flutter build ios --release --no-codesign --no-pub
+          mkdir -p "$RUNNER_TEMP/Payload"
+          ditto build/ios/iphoneos/Runner.app "$RUNNER_TEMP/Payload/PocketLedger.app"
+          ditto -c -k --keepParent "$RUNNER_TEMP/Payload" \
+            "$RUNNER_TEMP/ios-artifacts/PocketLedger-iOS-Unsigned.ipa"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PocketLedger-iOS
+          path: ${{ runner.temp }}/ios-artifacts/*
+          if-no-files-found: error

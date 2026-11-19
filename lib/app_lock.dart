@@ -6,14 +6,24 @@ class DeviceLock {
   static const _channel = MethodChannel('pocketledger/device_lock');
 
   static bool get supported =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  static bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
+
+  static String get unlockDescription => _isIOS
+      ? 'Unlock with Face ID, Touch ID, or your device passcode.'
+      : 'Unlock with your Android PIN, pattern, or password.';
 
   static Future<bool> confirm() async =>
       await _channel.invokeMethod<bool>('confirm') ?? false;
 
   static String errorText(Object error) =>
       error is PlatformException && error.code == 'no_screen_lock'
-      ? 'Set a PIN, pattern, or password in Android Settings, then try again.'
+      ? (_isIOS
+            ? 'Set a device passcode in Settings, then try again.'
+            : 'Set a PIN, pattern, or password in Android Settings, then try again.')
       : 'Device confirmation is unavailable. Try again.';
 }
 
@@ -42,7 +52,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   void didUpdateWidget(covariant AppLockGate oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.enabled != widget.enabled) {
-      // Settings changes the flag only after Android verifies the credential.
+      // Settings changes the flag only after the device verifies the credential.
       locked = false;
       error = null;
     }
@@ -116,8 +126,8 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Unlock with your Android PIN, pattern, or password.',
+                    Text(
+                      DeviceLock.unlockDescription,
                       textAlign: TextAlign.center,
                     ),
                     if (error != null)
@@ -136,7 +146,7 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
                       onPressed: confirming ? null : unlock,
                       child: Text(
                         confirming
-                            ? 'Waiting for Android…'
+                            ? 'Waiting for device confirmation…'
                             : 'Unlock PocketLedger',
                       ),
                     ),

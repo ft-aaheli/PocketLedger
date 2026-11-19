@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -48,4 +49,14 @@ void main() {
       expect(unlock, findsOneWidget);
     },
   );
+  test('uses iOS device lock and passcode guidance on iPhone', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    expect(DeviceLock.supported, isTrue);
+    expect(DeviceLock.unlockDescription, contains('Face ID'));
+    expect(
+      DeviceLock.errorText(PlatformException(code: 'no_screen_lock')),
+      contains('device passcode'),
+    );
+  });
 }

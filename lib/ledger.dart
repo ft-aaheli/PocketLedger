@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -197,9 +198,20 @@ class Ledger extends ChangeNotifier {
     notifyListeners();
   }
 
+  static Future<String> _deviceDatabasePath() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      final path = await const MethodChannel('pocketledger/storage')
+          .invokeMethod<String>('databasePath');
+      if (path == null)
+        throw StateError('The private ledger directory is unavailable.');
+      return path;
+    }
+    return '${await getDatabasesPath()}/pocketledger.db';
+  }
+
   static Future<Ledger> open([String? path]) async {
     final database = await openDatabase(
-      path ?? '${await getDatabasesPath()}/pocketledger.db',
+      path ?? await _deviceDatabasePath(),
       version: 3,
       onConfigure: (db) async {
         // Rebuilding the parent table in the upgrade requires foreign keys

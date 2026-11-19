@@ -75,7 +75,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     secondary: const Icon(Icons.lock_outline),
                     title: const Text('App lock'),
                     subtitle: const Text(
-                      'Require your Android screen lock to open PocketLedger.',
+                      'Require device confirmation to open PocketLedger.',
                     ),
                     value: ledger.appLockEnabled,
                     onChanged: busy || confirmingLock ? null : changeAppLock,
