@@ -51,3 +51,20 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+// Keep the APK's advertised ABIs aligned with the Flutter engines it contains.
+val flutterTargets = providers.gradleProperty("target-platform").orNull?.split(",")
+if (flutterTargets != null) {
+    val androidAbis = mapOf(
+        "android-arm" to "armeabi-v7a",
+        "android-arm64" to "arm64-v8a",
+        "android-x64" to "x86_64",
+    )
+    androidComponents.onVariants { variant ->
+        for ((platform, abi) in androidAbis) {
+            if (platform !in flutterTargets) {
+                variant.packaging.jniLibs.excludes.add("**/$abi/**")
+            }
+        }
+    }
+}

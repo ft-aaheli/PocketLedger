@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
 
 import 'ledger.dart';
+import 'report_actions.dart';
 import 'forms.dart';
 import 'settings.dart';
 
@@ -301,6 +302,7 @@ class _LedgerHomeState extends State<LedgerHome> {
             _ => [
               monthPicker(),
               summary(monthly),
+              ReportActions(ledger, month),
               section('Expenses by category'),
               ExpenseBreakdown(ledger, monthly),
             ],
