@@ -75,7 +75,7 @@ class _ReportActionsState extends State<ReportActions> {
                 subtitle: Text(
                   format == ReportFormat.excel
                       ? 'Summary and transaction details'
-                      : 'Monthly summary and expense breakdown',
+                      : 'Summary and transactions with profile contact details',
                 ),
                 onTap: () => Navigator.pop(context, format),
               ),

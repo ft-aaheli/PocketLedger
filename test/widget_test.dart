@@ -76,4 +76,48 @@ void main() {
       expect(find.text('22.50'), findsOneWidget);
     },
   );
+  testWidgets('home balance stays fixed while the entry list scrolls', (
+    tester,
+  ) async {
+    final ledger = (await tester.runAsync(() async {
+      final opened = await Ledger.open(inMemoryDatabasePath);
+      await opened.setup('INR', 'Cash box', 12345);
+      await opened.saveAccount(
+        const Account('bank', 'Savings', 'Bank', 54321, false),
+      );
+      final category = opened.categories.firstWhere(
+        (item) => item.kind == Kind.expense,
+      );
+      for (var index = 0; index < 5; index++) {
+        await opened.saveEntry(
+          LedgerEntry(
+            'expense-$index',
+            Kind.expense,
+            1,
+            dayKey(DateTime.now()),
+            'bank',
+            null,
+            category.id,
+            'Entry $index',
+          ),
+        );
+      }
+      return opened;
+    }))!;
+    addTearDown(ledger.db.close);
+    await tester.pumpWidget(PocketLedger(ledger));
+    final balance = find.text('Total balance');
+    expect(find.text('Bank'), findsOneWidget);
+    expect(find.text('Cash'), findsOneWidget);
+    expect(find.text(money(54316, 'INR')), findsOneWidget);
+    expect(find.text(money(12345, 'INR')), findsOneWidget);
+    final before = tester.getTopLeft(balance);
+    await tester.drag(find.byType(ListView), const Offset(0, -350));
+    await tester.pumpAndSettle();
+    expect(
+      tester.state<ScrollableState>(find.byType(Scrollable)).position.pixels,
+      greaterThan(0),
+    );
+    expect(tester.getTopLeft(balance), before);
+  });
 }

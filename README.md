@@ -22,6 +22,8 @@ On the phone, create Cash with an opening balance of ₹1,000. Record a ₹250 e
 
 Edit the expense to ₹350 and delete the transfer. Cash should show ₹1,150 and Bank ₹2,000. Export a backup under Settings, delete an entry, then restore the backup and confirm it returns. Switch to airplane mode and reopen the app to confirm the ledger is still available.
 
+The Home balance card stays pinned above the scrolling entries and shows Bank and Cash subtotals.
+
 ## Accounts and profile
 
 Choose Bank or Online when setting up a ledger or creating an account. Use Online to track a digital balance such as a payment wallet. Accounts are tracked manually. Use **Add Bank, Online or other account** on the entry form to create and select an account without leaving your draft.
@@ -32,7 +34,7 @@ Open **Settings → Profile** to enter your full name, phone, email, mailing add
 
 Open Reports and select a month. **Excel** and **PDF** save a copy through the system file picker. **Share report** lets you choose a format and opens the system share sheet for WhatsApp and other installed apps.
 
-The Excel workbook includes the monthly summary and transaction details. The PDF includes the monthly cash-flow summary and expense breakdown. Transfers appear in the Excel transaction list and are excluded from income and expense totals.
+The Excel workbook includes the monthly summary and transaction details. The PDF includes the monthly cash-flow summary, expense breakdown, and full transaction statement. It includes saved profile name, phone, email, and mailing address when available. Transfers appear in the Excel transaction list and are excluded from income and expense totals.
 
 ## Implementation
 

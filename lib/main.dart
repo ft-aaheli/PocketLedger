@@ -162,151 +162,213 @@ class _LedgerHomeState extends State<LedgerHome> {
       ),
       body: SafeArea(
         bottom: false,
-        child: ListView(
-          key: ValueKey(tab),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          children: switch (tab) {
-            0 => [
-              Card(
-                color: navy,
-                child: Padding(
-                  padding: const EdgeInsets.all(22),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.account_balance_wallet_outlined,
-                        color: Color(0xFF89E0D9),
+        child: Column(
+          children: [
+            if (tab == 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: balanceCard(balances),
+              ),
+            Expanded(
+              child: ListView(
+                key: ValueKey(tab),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                children: switch (tab) {
+                  0 => [
+                    monthPicker(),
+                    summary(monthly),
+                    section(
+                      'Recent entries',
+                      TextButton(
+                        onPressed: openStatement,
+                        child: const Text('View all'),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Total balance',
-                        style: TextStyle(color: Color(0xFFCFDBED)),
+                    ),
+                    if (monthly.isEmpty)
+                      empty(
+                        'No entries this month',
+                        ledger.entries.isEmpty
+                            ? 'Tap Add entry to record your first transaction.'
+                            : 'Select another month to view earlier entries.',
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        format(
-                          balances.values.fold(
-                            0,
-                            (sum, amount) => sum + amount,
+                    ...monthly.take(5).map((entry) => entryTile(entry)),
+                  ],
+                  1 => [
+                    monthPicker(),
+                    TextFormField(
+                      initialValue: search,
+                      onChanged: (value) => setState(() => search = value),
+                      decoration: const InputDecoration(
+                        labelText: 'Search transactions',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        for (final kind in <Kind?>[null, ...Kind.values])
+                          ChoiceChip(
+                            label: Text(kind == null ? 'All' : kindLabel(kind)),
+                            selected: filter == kind,
+                            onSelected: (_) => setState(() => filter = kind),
                           ),
-                        ),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      ],
+                    ),
+                    if (visibleEntries.isEmpty)
+                      empty(
+                        'No matching entries',
+                        'Try a different month or search.',
                       ),
+                    for (
+                      var index = 0;
+                      index < visibleEntries.length;
+                      index++
+                    ) ...[
+                      if (index == 0 ||
+                          visibleEntries[index - 1].day !=
+                              visibleEntries[index].day)
+                        section(
+                          DateFormat(
+                            'EEE, d MMM',
+                          ).format(DateTime.parse(visibleEntries[index].day)),
+                        ),
+                      entryTile(visibleEntries[index]),
                     ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              monthPicker(),
-              summary(monthly),
-              section(
-                'Recent entries',
-                TextButton(
-                  onPressed: () => setState(() {
-                    tab = 1;
-                    search = '';
-                    filter = null;
-                  }),
-                  child: const Text('View all'),
-                ),
-              ),
-              if (monthly.isEmpty)
-                empty(
-                  'No entries this month',
-                  ledger.entries.isEmpty
-                      ? 'Tap Add entry to record your first transaction.'
-                      : 'Select another month to view earlier entries.',
-                ),
-              ...monthly.take(5).map((entry) => entryTile(entry)),
-            ],
-            1 => [
-              monthPicker(),
-              TextFormField(
-                initialValue: search,
-                onChanged: (value) => setState(() => search = value),
-                decoration: const InputDecoration(
-                  labelText: 'Search transactions',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final kind in <Kind?>[null, ...Kind.values])
-                    ChoiceChip(
-                      label: Text(kind == null ? 'All' : kindLabel(kind)),
-                      selected: filter == kind,
-                      onSelected: (_) => setState(() => filter = kind),
+                  ],
+                  2 => [
+                    section(
+                      'Your accounts',
+                      TextButton.icon(
+                        onPressed: () => show(AccountPage(ledger)),
+                        icon: const Icon(Icons.add),
+                        label: const Text('New account'),
+                      ),
                     ),
-                ],
-              ),
-              if (visibleEntries.isEmpty)
-                empty(
-                  'No matching entries',
-                  'Try a different month or search.',
-                ),
-              for (var index = 0; index < visibleEntries.length; index++) ...[
-                if (index == 0 ||
-                    visibleEntries[index - 1].day != visibleEntries[index].day)
-                  section(
-                    DateFormat('EEE, d MMM')
-                        .format(DateTime.parse(visibleEntries[index].day)),
-                  ),
-                entryTile(visibleEntries[index]),
-              ],
-            ],
-            2 => [
-              section(
-                'Your accounts',
-                TextButton.icon(
-                  onPressed: () => show(AccountPage(ledger)),
-                  icon: const Icon(Icons.add),
-                  label: const Text('New account'),
-                ),
-              ),
-              for (final account in ledger.accounts)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Card(
-                    child: ListTile(
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.account_balance_wallet_outlined),
-                      ),
-                      title: Text(account.name),
-                      subtitle: Text(
-                        '${account.type}${account.archived ? ' · Archived' : ''}',
-                      ),
-                      trailing: SizedBox(
-                        width: 132,
-                        child: Text(
-                          format(balances[account.id]!),
-                          textAlign: TextAlign.end,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                    for (final account in ledger.accounts)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Card(
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(
+                                Icons.account_balance_wallet_outlined,
+                              ),
+                            ),
+                            title: Text(account.name),
+                            subtitle: Text(
+                              '${account.type}${account.archived ? ' · Archived' : ''}',
+                            ),
+                            trailing: SizedBox(
+                              width: 132,
+                              child: Text(
+                                format(balances[account.id]!),
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            onTap: () =>
+                                show(AccountPage(ledger, account: account)),
                           ),
                         ),
                       ),
-                      onTap: () => show(AccountPage(ledger, account: account)),
+                  ],
+                  _ => [
+                    monthPicker(),
+                    section('Monthly summary'),
+                    summary(monthly),
+                    const SizedBox(height: 8),
+                    figure(
+                      'Net cash flow',
+                      format(
+                        Ledger.total(monthly, Kind.income) -
+                            Ledger.total(monthly, Kind.expense),
+                      ),
+                      Icons.account_balance_wallet_outlined,
+                      Theme.of(context).colorScheme.primary,
                     ),
-                  ),
-                ),
-            ],
-            _ => [
-              monthPicker(),
-              summary(monthly),
-              ReportActions(ledger, month),
-              section('Expenses by category'),
-              ExpenseBreakdown(ledger, monthly),
-            ],
-          },
+                    section(
+                      'Transaction statement',
+                      TextButton(
+                        onPressed: openStatement,
+                        child: const Text('View transactions'),
+                      ),
+                    ),
+                    if (monthly.isEmpty)
+                      const Text('No transactions for this month.'),
+                    ReportActions(ledger, month),
+                    section('Expenses by category'),
+                    ExpenseBreakdown(ledger, monthly),
+                  ],
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void openStatement() => setState(() {
+    tab = 1;
+    search = '';
+    filter = null;
+  });
+
+  Widget balanceCard(Map<String, int> balances) {
+    int totalFor(String type) => ledger.accounts
+        .where((account) => account.type == type)
+        .fold(0, (sum, account) => sum + balances[account.id]!);
+
+    Widget amount(int cents, double fontSize) => FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(
+        format(cents),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+
+    Widget subtotal(String label, int cents) => Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Color(0xFFCFDBED))),
+          amount(cents, 19),
+        ],
+      ),
+    );
+
+    return Card(
+      color: navy,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Total balance',
+              style: TextStyle(color: Color(0xFFCFDBED)),
+            ),
+            amount(balances.values.fold(0, (sum, value) => sum + value), 32),
+            const Divider(color: Color(0xFF45546D), height: 16),
+            Row(
+              children: [
+                subtotal('Bank', totalFor('Bank')),
+                const SizedBox(width: 12),
+                subtotal('Cash', totalFor('Cash')),
+              ],
+            ),
+          ],
         ),
       ),
     );

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:excel/excel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -67,7 +69,17 @@ void main() {
         await ledger.saveEntry(entry);
       }
 
+      await ledger.saveProfile(
+        const LocalProfile(
+          name: 'Jit Rao',
+          phone: '+91 555 0100',
+          email: 'jit@example.com',
+          address: '12 Lake Road',
+        ),
+      );
       final report = MonthlyReport(ledger, DateTime(2026, 11));
+      expect(report.contact.name, 'Jit Rao');
+      expect(report.contact.email, 'jit@example.com');
       final workbook = Excel.decodeBytes(report.excel());
       final summary = workbook['Summary'].rows;
       final transactions = workbook['Transactions'].rows;
@@ -79,12 +91,31 @@ void main() {
       expect(transactions[1][6]!.value, TextCellValue('=1+1'));
       expect(transactions[3][4]!.value, TextCellValue('Bank'));
 
-      final pdf = await report.pdf(
+      for (var index = 0; index < 35; index++) {
+        await ledger.saveEntry(
+          LedgerEntry(
+            'extra-$index',
+            Kind.expense,
+            25,
+            '2026-11-10',
+            cash,
+            null,
+            expense.id,
+            'Statement entry $index',
+          ),
+        );
+      }
+      final statement = MonthlyReport(ledger, DateTime(2026, 11));
+      final pdf = await statement.pdf(
         await rootBundle.load('assets/fonts/NotoSans-Regular.ttf'),
         await rootBundle.load('assets/fonts/NotoSansDevanagari-Regular.ttf'),
       );
       expect(String.fromCharCodes(pdf.take(5)), '%PDF-');
       expect(pdf.length, greaterThan(1000));
+      expect(
+        RegExp(r'/Type\s*/Page\b').allMatches(latin1.decode(pdf)).length,
+        greaterThan(1),
+      );
     },
   );
 }
