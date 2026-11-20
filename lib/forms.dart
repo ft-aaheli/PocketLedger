@@ -194,11 +194,16 @@ class _SetupPageState extends State<SetupPage> with FormSave<SetupPage> {
     saving: saving,
     action: 'Create ledger',
     fields: [
-      const Align(
+      Align(
         alignment: Alignment.centerLeft,
-        child: CircleAvatar(
-          radius: 30,
-          child: Icon(Icons.account_balance_wallet_outlined, size: 28),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Image.asset(
+            'assets/branding/pocketledger.png',
+            width: 60,
+            height: 60,
+            excludeFromSemantics: true,
+          ),
         ),
       ),
       Text(

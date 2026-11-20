@@ -1,14 +1,27 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="48dp" android:height="48dp"
-    android:viewportWidth="48" android:viewportHeight="48">
-    <path android:fillColor="#17243A"
-        android:pathData="M12,0h24q12,0 12,12v24q0,12 -12,12h-24q-12,0 -12,-12v-24q0,-12 12,-12z" />
-    <path android:fillColor="#87DBD1"
-        android:pathData="M12,16v-2q0,-2 2,-3l19,-4v7z" />
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M13,16h22q3,0 3,3v3h-9q-5,0 -5,5t5,5h9v2q0,3 -3,3h-22q-3,0 -3,-3v-15q0,-3 3,-3z" />
-    <path android:fillColor="#87DBD1"
-        android:pathData="M29,24h10v6h-10q-3,0 -3,-3t3,-3z" />
-    <path android:fillColor="#17243A"
-        android:pathData="M31,25.5a1.5,1.5 0,1 0,0 3a1.5,1.5 0,1 0,0 -3z" />
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+    <path
+        android:fillColor="#17243A"
+        android:pathData="M0,0H128V128H0Z" />
+    <!-- Wallet body and open rim -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M37.3,53C33.5,53.2 30.7,56.2 30.7,60.1V90.9C30.7,95 34,98 38,98H90C94,98 97.2,94.7 97.2,90.8V86.2H83.2C78,86.2 74,81.9 74,77C74,71.9 78,67.6 83.2,67.6H97.2V60.1C97.2,56.2 94.3,53.2 90.6,53V56.3C92.2,56.5 93.5,57.7 93.7,59.3H34.2C34.4,57.7 35.7,56.5 37.3,56.3Z" />
+    <!-- Ledger page and rules -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45.8,29.8H82.2C85.8,29.8 88.8,32.7 88.8,36.3V56.3H39.2V36.3C39.2,32.7 42.2,29.8 45.8,29.8Z" />
+    <path
+        android:fillColor="#17243A"
+        android:pathData="M46.2,36.9H81.8V40.8H46.2ZM46.2,46.1H81.8V50H46.2Z" />
+    <!-- Clasp and stud -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M83.3,70H97.4C98.4,70 99.1,70.9 99.1,71.9V81.9C99.1,83 98.3,83.8 97.3,83.8H83.3C79.5,83.8 76.5,80.8 76.5,76.9C76.5,73.1 79.5,70 83.3,70Z" />
+    <path
+        android:fillColor="#17243A"
+        android:pathData="M87.1,76.9A3.3,3.3 0,1 1,80.5 76.9A3.3,3.3 0,0 1,87.1 76.9Z" />
 </vector>
