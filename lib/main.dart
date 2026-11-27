@@ -158,6 +158,7 @@ class _LedgerHomeState extends State<LedgerHome> {
       appBar: AppBar(
         title: Text(titles[tab]),
         actions: [
+          if (tab != 0 && ledger.mascotEnabled) const WalletMascot(),
           if (tab == 0)
             IconButton(
               onPressed: () => show(ProfilePage(ledger)),
@@ -414,7 +415,7 @@ class _LedgerHomeState extends State<LedgerHome> {
                 ),
                 if (ledger.mascotEnabled) ...[
                   const SizedBox(width: 12),
-                  const WalletMascot(),
+                  const WalletMascot(roaming: true),
                 ],
               ],
             ),

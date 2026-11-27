@@ -88,7 +88,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   secondary: const Icon(Icons.account_balance_wallet_outlined),
                   title: const Text('Wallet mascot'),
                   subtitle: const Text(
-                    'Show the mascot on Home and after saving an entry.',
+                    'Show the mascot around your ledger and after saving an entry.',
                   ),
                   value: ledger.mascotEnabled,
                   onChanged: busy
