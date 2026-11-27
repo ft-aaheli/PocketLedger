@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import 'app_lock.dart';
 import 'ledger.dart';
+import 'profile.dart';
 import 'report_actions.dart';
 import 'forms.dart';
 import 'settings.dart';
@@ -129,6 +130,12 @@ class _LedgerHomeState extends State<LedgerHome> {
       appBar: AppBar(
         title: Text(titles[tab]),
         actions: [
+          if (tab == 0)
+            IconButton(
+              onPressed: () => show(ProfilePage(ledger)),
+              tooltip: 'Your profile',
+              icon: ProfileAvatar(photo: ledger.profile.photo, radius: 16),
+            ),
           IconButton(
             onPressed: () => show(SettingsPage(ledger)),
             tooltip: 'Settings',

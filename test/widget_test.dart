@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketledger/ledger.dart';
@@ -7,6 +9,44 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() {
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
+
+  testWidgets('dashboard avatar opens the profile and shows its saved photo', (
+    tester,
+  ) async {
+    final ledger = (await tester.runAsync(() async {
+      final opened = await Ledger.open(inMemoryDatabasePath);
+      await opened.setup('INR', 'Cash', 0);
+      return opened;
+    }))!;
+    addTearDown(ledger.db.close);
+    await tester.pumpWidget(PocketLedger(ledger));
+
+    final avatar = find.byTooltip('Your profile');
+    expect(
+      find.descendant(of: avatar, matching: find.byIcon(Icons.person_outline)),
+      findsOneWidget,
+    );
+    await tester.tap(avatar);
+    await tester.pumpAndSettle();
+    expect(find.text('Add photo'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.runAsync(
+      () => ledger.saveProfile(
+        LocalProfile(
+          photo: base64Decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jT1sAAAAASUVORK5CYII=',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: avatar, matching: find.byType(Image)),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('first run creates a ledger and saves one expense', (
     tester,

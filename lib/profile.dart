@@ -1,11 +1,35 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'forms.dart';
 import 'ledger.dart';
+
+class ProfileAvatar extends StatelessWidget {
+  const ProfileAvatar({required this.photo, required this.radius, super.key});
+
+  final Uint8List? photo;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) => ClipOval(
+    child: SizedBox.square(
+      dimension: radius * 2,
+      child: photo == null
+          ? _placeholder()
+          : Image.memory(
+              photo!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _placeholder(),
+            ),
+    ),
+  );
+
+  Widget _placeholder() =>
+      CircleAvatar(child: Icon(Icons.person_outline, size: radius));
+}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage(this.ledger, {super.key});
@@ -40,13 +64,7 @@ class _ProfilePageState extends State<ProfilePage> with FormSave<ProfilePage> {
     fields: [
       Row(
         children: [
-          CircleAvatar(
-            radius: 32,
-            backgroundImage: photo == null ? null : MemoryImage(photo!),
-            child: photo == null
-                ? const Icon(Icons.person_outline, size: 30)
-                : null,
-          ),
+          ProfileAvatar(photo: photo, radius: 32),
           const SizedBox(width: 12),
           Expanded(
             child: Wrap(
@@ -120,10 +138,10 @@ class _ProfilePageState extends State<ProfilePage> with FormSave<ProfilePage> {
     const limit = 15 * 1024 * 1024;
     setState(() => picking = true);
     try {
-      final file = await FilePicker.pickFile(type: FileType.image);
+      final file = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (!mounted || file == null) return;
       final data = BytesBuilder(copy: false);
-      await for (final chunk in file.readAsByteStream()) {
+      await for (final chunk in file.openRead()) {
         if (data.length + chunk.length > limit) {
           throw const FormatException('Choose an image smaller than 15 MB.');
         }
