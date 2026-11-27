@@ -20,7 +20,7 @@ class _WalletMascotState extends State<WalletMascot>
     with SingleTickerProviderStateMixin {
   late final motion = AnimationController(
     vsync: this,
-    duration: Duration(milliseconds: widget.roaming ? 2100 : 780),
+    duration: Duration(milliseconds: widget.roaming ? 3600 : 1050),
   );
   bool? reducedMotion;
   bool greeted = false;
@@ -58,17 +58,24 @@ class _WalletMascotState extends State<WalletMascot>
       animation: motion,
       builder: (context, _) {
         final progress = motion.value;
-        final walking = widget.roaming && progress > 0 && progress < .55;
-        final stride = walking ? math.sin(progress / .55 * math.pi * 6) : 0.0;
-        final travel = widget.roaming && reducedMotion == false
-            ? 32 * (1 - (progress / .55).clamp(0.0, 1.0))
+        final outbound = progress < .42;
+        final walkPhase = outbound
+            ? progress / .42
+            : ((progress - .74) / .26).clamp(0.0, 1.0);
+        final stride = widget.roaming
+            ? math.sin(walkPhase * math.pi * (outbound ? 8 : 6))
             : 0.0;
-        final wavePhase = widget.roaming ? (progress - .55) / .45 : progress;
+        final travel = widget.roaming && reducedMotion == false
+            ? 32 * (outbound ? 1 - walkPhase : walkPhase)
+            : 0.0;
+        final wavePhase = widget.roaming ? (progress - .42) / .32 : progress;
         final waving = wavePhase > 0 && wavePhase < 1
             ? math.sin(math.pi * wavePhase)
             : 0.0;
         final jump = widget.celebrating
-            ? 7 * math.sin(math.pi * progress)
+            ? 8 * math.sin(2 * math.pi * progress).abs()
+            : widget.roaming
+            ? 4 * waving
             : 0.0;
         return Align(
           alignment: Alignment.centerLeft,

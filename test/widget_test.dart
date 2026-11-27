@@ -169,6 +169,12 @@ void main() {
       await opened.saveAccount(
         const Account('bank', 'Savings', 'Bank', 54321, false),
       );
+      await opened.saveAccount(
+        const Account('online', 'UPI', 'Online', 9850, false),
+      );
+      await opened.saveAccount(
+        const Account('wallet', 'Digital wallet', 'Wallet', 4200, false),
+      );
       final category = opened.categories.firstWhere(
         (item) => item.kind == Kind.expense,
       );
@@ -195,6 +201,11 @@ void main() {
     expect(find.text('Cash'), findsOneWidget);
     expect(find.text(money(54316, 'INR')), findsOneWidget);
     expect(find.text(money(12345, 'INR')), findsOneWidget);
+    expect(find.text('Online'), findsOneWidget);
+    expect(find.text('Wallet'), findsOneWidget);
+    expect(find.text(money(9850, 'INR')), findsOneWidget);
+    expect(find.text(money(4200, 'INR')), findsOneWidget);
+    expect(find.text(money(80711, 'INR')), findsOneWidget);
     final before = tester.getTopLeft(balance);
     await tester.drag(find.byType(ListView), const Offset(0, -350));
     await tester.pumpAndSettle();

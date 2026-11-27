@@ -362,9 +362,17 @@ class _LedgerHomeState extends State<LedgerHome> {
   });
 
   Widget balanceCard(Map<String, int> balances) {
-    int totalFor(String type) => ledger.accounts
-        .where((account) => account.type == type)
-        .fold(0, (sum, account) => sum + balances[account.id]!);
+    final totals = <String, int>{
+      for (final type in accountTypes.take(3)) type: 0,
+    };
+    for (final account in ledger.accounts) {
+      totals.update(
+        account.type,
+        (total) => total + balances[account.id]!,
+        ifAbsent: () => balances[account.id]!,
+      );
+    }
+    final types = totals.keys.toList();
 
     Widget amount(int cents, double fontSize) => FittedBox(
       fit: BoxFit.scaleDown,
@@ -420,13 +428,23 @@ class _LedgerHomeState extends State<LedgerHome> {
               ],
             ),
             const Divider(color: Color(0xFF45546D), height: 16),
-            Row(
-              children: [
-                subtotal('Bank', totalFor('Bank')),
-                const SizedBox(width: 12),
-                subtotal('Cash', totalFor('Cash')),
-              ],
-            ),
+            for (var start = 0; start < types.length; start += 3) ...[
+              if (start > 0) const SizedBox(height: 8),
+              Row(
+                children: [
+                  for (var column = 0; column < 3; column++) ...[
+                    if (column > 0) const SizedBox(width: 8),
+                    if (start + column < types.length)
+                      subtotal(
+                        types[start + column],
+                        totals[types[start + column]]!,
+                      )
+                    else
+                      const Spacer(),
+                  ],
+                ],
+              ),
+            ],
           ],
         ),
       ),
