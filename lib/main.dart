@@ -7,6 +7,7 @@ import 'profile.dart';
 import 'report_actions.dart';
 import 'forms.dart';
 import 'settings.dart';
+import 'wallet_mascot.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -115,6 +116,33 @@ class _LedgerHomeState extends State<LedgerHome> {
   void show(Widget page) =>
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
 
+  Future<void> addEntry() async {
+    final saved = await Navigator.of(context)
+        .push<Kind>(MaterialPageRoute<Kind>(builder: (_) => EntryPage(ledger)));
+    if (!mounted || saved == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            if (ledger.mascotEnabled) ...[
+              const WalletMascot(celebrating: true),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: Text(switch (saved) {
+                Kind.expense => 'Expense recorded!',
+                Kind.income => 'Income recorded!',
+                Kind.transfer => 'Transfer complete!',
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final monthly = ledger.monthly(month);
@@ -168,7 +196,7 @@ class _LedgerHomeState extends State<LedgerHome> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => show(EntryPage(ledger)),
+        onPressed: addEntry,
         icon: const Icon(Icons.add),
         label: const Text('Add entry'),
       ),
@@ -367,11 +395,29 @@ class _LedgerHomeState extends State<LedgerHome> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Total balance',
-              style: TextStyle(color: Color(0xFFCFDBED)),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Total balance',
+                        style: TextStyle(color: Color(0xFFCFDBED)),
+                      ),
+                      amount(
+                        balances.values.fold(0, (sum, value) => sum + value),
+                        32,
+                      ),
+                    ],
+                  ),
+                ),
+                if (ledger.mascotEnabled) ...[
+                  const SizedBox(width: 12),
+                  const WalletMascot(),
+                ],
+              ],
             ),
-            amount(balances.values.fold(0, (sum, value) => sum + value), 32),
             const Divider(color: Color(0xFF45546D), height: 16),
             Row(
               children: [

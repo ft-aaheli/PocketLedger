@@ -88,6 +88,7 @@ void main() {
     });
     await tester.pumpAndSettle();
     expect(ledger.entries.single.amount, 25025);
+    expect(find.text('Expense recorded!'), findsOneWidget);
     expect(ledger.balances.values.single, -25025);
     expect(find.text('Food'), findsOneWidget);
   });

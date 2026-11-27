@@ -87,11 +87,11 @@ mixin FormSave<T extends StatefulWidget> on State<T> {
   final formKey = GlobalKey<FormState>();
   bool saving = false;
 
-  Future<void> save(
+  Future<void> save<R extends Object>(
     Future<void> Function() write, {
     bool close = true,
     bool validate = true,
-    String? result,
+    R? result,
   }) async {
     if (saving || (validate && !formKey.currentState!.validate())) return;
     FocusScope.of(context).unfocus();
@@ -99,7 +99,7 @@ mixin FormSave<T extends StatefulWidget> on State<T> {
     try {
       await write();
       if (mounted && close && ModalRoute.isCurrentOf(context) == true) {
-        Navigator.pop(context, result);
+        Navigator.pop<R>(context, result);
       }
     } catch (error) {
       if (mounted) {
@@ -517,6 +517,7 @@ class _EntryPageState extends State<EntryPage> with FormSave<EntryPage> {
             note.text.trim(),
           ),
         ),
+        result: widget.entry == null ? kind : null,
       ),
     );
   }

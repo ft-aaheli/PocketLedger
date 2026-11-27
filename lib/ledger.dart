@@ -151,6 +151,9 @@ class Ledger extends ChangeNotifier {
 
   String get currency => preferences['currency'] ?? 'INR';
   String get theme => preferences['theme'] ?? 'system';
+  static const mascotPreference = 'walletMascot';
+  bool get mascotEnabled => preferences[mascotPreference] != 'disabled';
+
   static const _appLockPreference = 'appLock';
   bool get appLockEnabled => preferences[_appLockPreference] == 'enabled';
 
@@ -439,10 +442,11 @@ class Ledger extends ChangeNotifier {
 
   Future<Uint8List> export(String password) async {
     final data = await db.transaction(_snapshot);
-    data['preferences'] = _rows(
-      data,
-      'preferences',
-    ).where((row) => row['key'] != _appLockPreference).toList();
+    data['preferences'] = _rows(data, 'preferences')
+        .where(
+          (row) => ![_appLockPreference, mascotPreference].contains(row['key']),
+        )
+        .toList();
     final salt = SecretKeyData.random(length: 16).bytes;
     final key = await _key(password, salt);
     final box = await AesGcm.with256bits().encrypt(
@@ -516,8 +520,8 @@ class Ledger extends ChangeNotifier {
       }
       await tx.delete(
         'preferences',
-        where: 'key != ?',
-        whereArgs: [_appLockPreference],
+        where: 'key NOT IN (?, ?)',
+        whereArgs: [_appLockPreference, mascotPreference],
       );
       for (final (table, rows) in [
         ('accounts', accounts),

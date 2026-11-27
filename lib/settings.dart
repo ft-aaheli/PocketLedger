@@ -83,6 +83,25 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
               const SizedBox(height: 16),
+              Card(
+                child: SwitchListTile(
+                  secondary: const Icon(Icons.account_balance_wallet_outlined),
+                  title: const Text('Wallet mascot'),
+                  subtitle: const Text(
+                    'Show the mascot on Home and after saving an entry.',
+                  ),
+                  value: ledger.mascotEnabled,
+                  onChanged: busy
+                      ? null
+                      : (enabled) => act(
+                          () => ledger.setting(
+                            Ledger.mascotPreference,
+                            enabled ? 'enabled' : 'disabled',
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
               dropdown(
                 'Appearance',
                 ledger.theme,
