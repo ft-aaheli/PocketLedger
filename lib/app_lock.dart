@@ -40,6 +40,7 @@ class AppLockGate extends StatefulWidget {
 class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   late bool locked = widget.enabled;
   bool confirming = false;
+  bool verifiedWhileAway = false;
   String? error;
 
   @override
@@ -54,12 +55,20 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
     if (oldWidget.enabled != widget.enabled) {
       // Settings changes the flag only after the device verifies the credential.
       locked = false;
+      verifiedWhileAway = false;
       error = null;
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && verifiedWhileAway) {
+      setState(() {
+        verifiedWhileAway = false;
+        locked = false;
+      });
+      return;
+    }
     if (widget.enabled &&
         !locked &&
         (state == AppLifecycleState.hidden ||
@@ -79,14 +88,25 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   }
 
   Future<void> unlock() async {
-    if (confirming) return;
+    if (confirming || verifiedWhileAway) return;
     setState(() {
       confirming = true;
       error = null;
     });
     try {
       final verified = await DeviceLock.confirm();
-      if (mounted && verified) setState(() => locked = false);
+      if (!mounted || !widget.enabled) return;
+      setState(() {
+        if (!verified) {
+          error = 'Device confirmation did not complete. Try again.';
+        } else if (WidgetsBinding.instance.lifecycleState ==
+            AppLifecycleState.resumed) {
+          locked = false;
+        } else {
+          // The native credential result may arrive before the app resumes.
+          verifiedWhileAway = true;
+        }
+      });
     } catch (failure) {
       if (mounted) setState(() => error = DeviceLock.errorText(failure));
     } finally {
@@ -143,9 +163,11 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
                       ),
                     const SizedBox(height: 20),
                     FilledButton(
-                      onPressed: confirming ? null : unlock,
+                      onPressed: confirming || verifiedWhileAway
+                          ? null
+                          : unlock,
                       child: Text(
-                        confirming
+                        confirming || verifiedWhileAway
                             ? 'Waiting for device confirmation…'
                             : 'Unlock PocketLedger',
                       ),
