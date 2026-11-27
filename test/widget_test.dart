@@ -68,14 +68,21 @@ void main() {
     await tester.tap(find.text('Add entry'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '250.25');
-    await tester.ensureVisible(find.text('Category'));
-    await tester.tap(find.text('Category'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Food').last);
+    await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Food'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Food'));
     await tester.pumpAndSettle();
 
+    await tester.scrollUntilVisible(
+      find.text('Save'),
+      220,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.runAsync(() async {
-      await tester.ensureVisible(find.text('Save'));
       await tester.tap(find.text('Save'));
       await ledger.db.transaction((_) async {});
     });
@@ -116,6 +123,42 @@ void main() {
       expect(find.text('22.50'), findsOneWidget);
     },
   );
+  testWidgets('entry defaults to Cash and can select an extra account', (
+    tester,
+  ) async {
+    final ledger = (await tester.runAsync(() async {
+      final opened = await Ledger.open(inMemoryDatabasePath);
+      await opened.setup('INR', 'Savings', 0, type: 'Bank');
+      for (final (name, type) in [
+        ('Wallet', 'Cash'),
+        ('UPI', 'Online'),
+        ('Reserve', 'Bank'),
+        ('Travel', 'Bank'),
+      ]) {
+        await opened.saveAccount(Account(name, name, type, 0, false));
+      }
+      return opened;
+    }))!;
+    addTearDown(ledger.db.close);
+    await tester.pumpWidget(PocketLedger(ledger));
+    await tester.tap(find.text('Add entry'));
+    await tester.pumpAndSettle();
+
+    ChoiceChip chip(String label) =>
+        tester.widget(find.widgetWithText(ChoiceChip, label));
+    expect(chip('Wallet').selected, isTrue);
+    expect(chip('Savings').selected, isFalse);
+    expect(chip('UPI').selected, isFalse);
+    expect(find.widgetWithText(ChoiceChip, 'Travel'), findsNothing);
+    await tester.tap(find.widgetWithText(ActionChip, 'More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Travel'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ActionChip, 'Show fewer'));
+    await tester.pumpAndSettle();
+    expect(chip('Travel').selected, isTrue);
+  });
+
   testWidgets('home balance stays fixed while the entry list scrolls', (
     tester,
   ) async {

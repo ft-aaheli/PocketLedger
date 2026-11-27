@@ -243,6 +243,81 @@ class _SetupPageState extends State<SetupPage> with FormSave<SetupPage> {
   );
 }
 
+class _EntryChoices extends StatefulWidget {
+  const _EntryChoices({
+    required this.label,
+    required this.value,
+    required this.choices,
+    required this.limit,
+    required this.onChanged,
+    super.key,
+  });
+
+  final String label;
+  final String? value;
+  final Map<String, String> choices;
+  final int limit;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  State<_EntryChoices> createState() => _EntryChoicesState();
+}
+
+class _EntryChoicesState extends State<_EntryChoices> {
+  bool expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = widget.choices.keys.take(widget.limit).toList();
+    final selected = widget.value;
+    if (!expanded &&
+        widget.choices.containsKey(selected) &&
+        !visible.contains(selected)) {
+      visible[visible.length - 1] = selected!;
+    }
+    final theme = Theme.of(context);
+    return FormField<String>(
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      validator: (_) =>
+          widget.choices.containsKey(widget.value) ? null : 'Choose an option.',
+      builder: (field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.label, style: theme.textTheme.titleSmall),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              for (final id in expanded ? widget.choices.keys : visible)
+                ChoiceChip(
+                  label: Text(widget.choices[id]!),
+                  shape: const StadiumBorder(),
+                  materialTapTargetSize: MaterialTapTargetSize.padded,
+                  selected: selected == id,
+                  onSelected: widget.onChanged == null
+                      ? null
+                      : (_) {
+                          widget.onChanged!(id);
+                          field.didChange(id);
+                        },
+                ),
+              if (widget.choices.length > widget.limit)
+                ActionChip(
+                  label: Text(expanded ? 'Show fewer' : 'More'),
+                  shape: const StadiumBorder(),
+                  onPressed: () => setState(() => expanded = !expanded),
+                ),
+            ],
+          ),
+          if (field.errorText case final error?)
+            Text(error, style: TextStyle(color: theme.colorScheme.error)),
+        ],
+      ),
+    );
+  }
+}
+
 class EntryPage extends StatefulWidget {
   const EntryPage(this.ledger, {super.key, this.entry});
   final Ledger ledger;
@@ -265,6 +340,10 @@ class _EntryPageState extends State<EntryPage> with FormSave<EntryPage> {
     kind = entry?.kind ?? Kind.expense;
     source =
         entry?.source ??
+        ledger.accounts
+            .where((a) => !a.archived && a.type == 'Cash')
+            .firstOrNull
+            ?.id ??
         ledger.accounts.where((a) => !a.archived).firstOrNull?.id;
     destination = entry?.destination;
     category = entry?.category;
@@ -282,8 +361,6 @@ class _EntryPageState extends State<EntryPage> with FormSave<EntryPage> {
     super.dispose();
   }
 
-  int accountPickerRevision = 0;
-
   Future<void> createEntryAccount() async {
     final id = await Navigator.push<String>(
       context,
@@ -298,21 +375,37 @@ class _EntryPageState extends State<EntryPage> with FormSave<EntryPage> {
       } else {
         source = id;
       }
-      accountPickerRevision++;
     });
   }
 
-  Map<String, String> accountChoices(String? original) => {
-    for (final a in ledger.accounts)
-      if (!a.archived || a.id == original)
-        a.id: '${a.name}${a.archived ? ' (archived)' : ''}',
-  };
+  Map<String, String> accountChoices(String? original, {String? exclude}) {
+    final available = ledger.accounts.where(
+      (account) =>
+          account.id != exclude &&
+          (!account.archived || account.id == original),
+    );
+    final labels = <String, String>{};
+    String label(Account account) =>
+        '${account.name}${account.archived ? ' (archived)' : ''}';
+    for (final type in ['Cash', 'Bank', 'Online']) {
+      final account = available
+          .where((a) => !a.archived && a.type == type)
+          .firstOrNull;
+      if (account != null) labels[account.id] = label(account);
+    }
+    for (final account in available) {
+      labels[account.id] = label(account);
+    }
+    return labels;
+  }
 
   @override
   Widget build(BuildContext context) {
     final sources = accountChoices(widget.entry?.source);
-    final destinations = accountChoices(widget.entry?.destination)
-      ..remove(source);
+    final destinations = accountChoices(
+      widget.entry?.destination,
+      exclude: source,
+    );
     final categories = {
       for (final c in ledger.categories)
         if (c.kind == kind && (!c.archived || c.id == widget.entry?.category))
@@ -350,15 +443,18 @@ class _EntryPageState extends State<EntryPage> with FormSave<EntryPage> {
         ),
         if (sources.isEmpty)
           const Text('Create or restore an active account from Accounts.'),
-        dropdown(
-          kind == Kind.transfer ? 'From account' : 'Account',
-          source,
-          sources,
-          (value) => setState(() {
-            source = value;
-            if (destination == value) destination = null;
-          }),
-          key: ValueKey(('source', accountPickerRevision)),
+        _EntryChoices(
+          key: const ValueKey('source'),
+          label: kind == Kind.transfer ? 'From account' : 'Account',
+          value: source,
+          choices: sources,
+          limit: 4,
+          onChanged: saving
+              ? null
+              : (value) => setState(() {
+                  source = value;
+                  if (destination == value) destination = null;
+                }),
         ),
         Align(
           alignment: Alignment.centerLeft,
@@ -371,22 +467,28 @@ class _EntryPageState extends State<EntryPage> with FormSave<EntryPage> {
         if (kind == Kind.transfer) ...[
           if (destinations.isEmpty)
             const Text('Transfers require two distinct accounts.'),
-          dropdown(
-            'To account',
-            destination,
-            destinations,
-            (value) => setState(() => destination = value),
-            key: ValueKey(('destination', source, accountPickerRevision)),
+          _EntryChoices(
+            key: ValueKey(('destination', source)),
+            label: 'To account',
+            value: destination,
+            choices: destinations,
+            limit: 4,
+            onChanged: saving
+                ? null
+                : (value) => setState(() => destination = value),
           ),
         ] else ...[
           if (categories.isEmpty)
             const Text('Add an active category in Settings.'),
-          dropdown(
-            'Category',
-            category,
-            categories,
-            (value) => setState(() => category = value),
+          _EntryChoices(
             key: ValueKey(kind),
+            label: 'Category',
+            value: category,
+            choices: categories,
+            limit: 8,
+            onChanged: saving
+                ? null
+                : (value) => setState(() => category = value),
           ),
         ],
         TextFormField(
